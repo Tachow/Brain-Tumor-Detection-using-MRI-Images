@@ -1,0 +1,102 @@
+!unzip /content/archive.zip
+
+import pandas as pd 
+import numpy as np
+import matplotlib.pyplot as plt 
+%matplotlib inline
+import tensorflow as tf
+from tensorflow import keras
+from keras import Sequential,models,layers
+
+from numpy import asarray
+import cv2
+import PIL
+from PIL import Image
+import os
+import glob
+import io
+
+#Acquire the path of files
+img_dir='/content/'
+no_images=os.listdir(img_dir + 'no/')
+yes_images=os.listdir(img_dir + 'yes/')
+
+#initialize dataset and label arrays
+datset=[]
+lab=[]
+size = 64
+
+#Images labelled with no
+for image_name in no_images:
+    image=cv2.imread(img_dir + 'no/' +image_name)
+    image=Image.fromarray(image,'RGB')
+    image=image.resize((size,size))
+    datset.append(np.array(image))
+    lab.append(0)
+    
+    
+#Images labelled with yes
+for image_name in yes_images:
+    image=cv2.imread(img_dir + 'yes/' +image_name)
+    image=Image.fromarray(image,'RGB')
+    image=image.resize((size,size))
+    datset.append(np.array(image))
+    lab.append(1)
+    
+
+#convert dataset and label to array    
+data=np.array(datset)
+l=np.array(lab)
+
+from sklearn import preprocessing
+from sklearn.model_selection import train_test_split
+X_train,X_test,y_train,y_test=train_test_split(data,l,test_size=0.2,random_state=42) #42 for random and 0.2 for 20% test data
+
+#Normalizing
+#X_train = normalize( X_train, axis =1)
+#X_test = normalize( X_test, axis =1)
+
+model=Sequential([
+                     
+                    #implementing cnn
+                    layers.Conv2D(50,(3,3), 
+                                  activation="relu",
+                                  input_shape=(64,64,3)),
+                    layers.MaxPooling2D((2,2)),
+     
+                    layers.Conv2D(64,(3,3),
+                                  activation="relu"),
+                    layers.MaxPooling2D((2,2)),
+    
+                    layers.Conv2D(54,(3,3),
+                                  activation="relu"),
+                    layers.MaxPooling2D((2,2)),
+    
+                     #dense_layer implementation
+                     layers.Flatten(),
+                     layers.Dense(64,activation="relu"),
+                     layers.Dense(2,activation="softmax")
+
+
+])
+
+model.summary()
+
+model.compile(loss="sparse_categorical_crossentropy", metrics=['accuracy'])
+trt=model.fit(X_train,y_train,epochs=8)
+#mod = trt.evaluate(x_test, y_test, verbose=0)
+#print("Test loss:", mod[0])
+#print("Test accuracy:", mod[1])
+
+prediction=model.predict(X_test)
+prediction=np.argmax(prediction,axis=1)
+
+from sklearn.metrics import accuracy_score
+accuracy_score(prediction,y_test)
+
+from sklearn import datasets
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, confusion_matrix
+print(classification_report(y_test, prediction))
+print(confusion_matrix(y_test, prediction))
